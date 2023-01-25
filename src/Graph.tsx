@@ -14,7 +14,8 @@ interface IProps {
  * Perspective library adds load to HTMLElement prototype.
  * This interface acts as a wrapper for Typescript compiler.
  */
-interface PerspectiveViewerElement {
+// Extend the HTMLElement class to retrieve its properties in our defined interface below.
+interface PerspectiveViewerElement extends HTMLElement { 
   load: (table: Table) => void,
 }
 
@@ -32,7 +33,24 @@ class Graph extends Component<IProps, {}> {
 
   componentDidMount() {
     // Get element to attach the table from the DOM.
-    const elem: PerspectiveViewerElement = document.getElementsByTagName('perspective-viewer')[0] as unknown as PerspectiveViewerElement;
+    // After extending the HTMLElement class above for our interface (PerspectiveViewerElement), we can assign the elem variable normally as shown below:
+    const elem = document.getElementsByTagName('perspective-viewer')[0] as unknown as PerspectiveViewerElement;
+    
+    /**Add attributes to elem**/
+    // Type of graph we want to visualize, using the 'y_line' type.
+    elem.setAttribute('view', 'y_line'); 
+    // Allows us to distinguish stock ABC from DEF
+    elem.setAttribute('column-pivots', '["stock"]');
+    // Sets the label for our x=axis making each datapoint based on the timestamp
+    elem.setAttribute('row-pivots', '["timestamp"]');
+    // Allows us to only focus on the top_ask_price for the y_axis marks, instead of the entire set of features provided by the data
+    elem.setAttribute('columns', '["top_ask_price"]');
+    // Allows us to take duplicated data from earlier observations and consolidate into a single data point. 
+    elem.setAttribute('aggregates', `
+      {"stock":"discount count",
+      "top_ask_price":"avg",
+      "top_bid_price":"avg",
+      "timestamp":"discount count"}`);
 
     const schema = {
       stock: 'string',
