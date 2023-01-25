@@ -1,0 +1,117 @@
+From 2653227d56601d1ed72d7ddac4b588cf5c7f428e Mon Sep 17 00:00:00 2001
+From: Faiyaad Hossain <fyd41498@gmail.com>
+Date: Wed, 25 Jan 2023 17:34:33 -0500
+Subject: [PATCH] Implemented Task 2 Changes
+
+---
+ src/App.tsx   | 31 +++++++++++++++++++++++++------
+ src/Graph.tsx | 22 ++++++++++++++++++++--
+ 2 files changed, 45 insertions(+), 8 deletions(-)
+
+diff --git a/src/App.tsx b/src/App.tsx
+index 0728518..b12782f 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -6,8 +6,11 @@ import './App.css';
+ /**
+  * State declaration for <App />
+  */
++// Interfaces are a feature in Typescript that allow us to define the type constraints of an object to be called on later. 
++// Our initial state "IState" will have a field "data" to store the retrieved results from the server and a second field "showGraph" to determine if the graph should be displayed or hidden.
+ interface IState {
+   data: ServerRespond[],
++  showGraph: boolean,
+ }
+ 
+ /**
+@@ -22,6 +25,7 @@ class App extends Component<{}, IState> {
+       // data saves the server responds.
+       // We use this state to parse data down to the child element (Graph) as element property
+       data: [],
++      showGraph: false, // Define initial state of the graph as hidden so that graph is only shown after the user clicks 'Start Streaming Data'. 
+     };
+   }
+ 
+@@ -29,18 +33,33 @@ class App extends Component<{}, IState> {
+    * Render Graph react component with state.data parse as property data
+    */
+   renderGraph() {
+-    return (<Graph data={this.state.data}/>)
++  // Only render the graoh when user clicks "Start Streaming Data" button and showGraph state is set to true.
++    if (this.state.showGraph) {
++      return (<Graph data={this.state.data}/>)
++    }
+   }
+ 
+   /**
+    * Get new data from server and update the state with the new data
+    */
+   getDataFromServer() {
+-    DataStreamer.getData((serverResponds: ServerRespond[]) => {
+-      // Update the state by creating a new array of data that consists of
+-      // Previous data in the state and the new data from server
+-      this.setState({ data: [...this.state.data, ...serverResponds] });
+-    });
++    let x = 0;
++    // Utilize setInterval to continuously retrieve data from the server and update the state every 100ms.
++    const interval = setInterval(() => {
++      DataStreamer.getData((serverResponds: ServerRespond[]) => {
++        // Update the state by creating a new array of data that consists of
++        // Previous data in the state and the new data from server
++        this.setState({ 
++          data: serverResponds,
++          showGraph: true, 
++        });
++      });
++      x++;
++      // After 1000 calls, cancel the interval sequence and end data retrieval.
++      if (x > 1000) {
++        clearInterval(interval)
++      }
++    }, 100);
+   }
+ 
+   /**
+diff --git a/src/Graph.tsx b/src/Graph.tsx
+index 3b2a7da..2866792 100644
+--- a/src/Graph.tsx
++++ b/src/Graph.tsx
+@@ -14,7 +14,8 @@ interface IProps {
+  * Perspective library adds load to HTMLElement prototype.
+  * This interface acts as a wrapper for Typescript compiler.
+  */
+-interface PerspectiveViewerElement {
++// Extend the HTMLElement class to retrieve its properties in our defined interface below.
++interface PerspectiveViewerElement extends HTMLElement { 
+   load: (table: Table) => void,
+ }
+ 
+@@ -32,7 +33,24 @@ class Graph extends Component<IProps, {}> {
+ 
+   componentDidMount() {
+     // Get element to attach the table from the DOM.
+-    const elem: PerspectiveViewerElement = document.getElementsByTagName('perspective-viewer')[0] as unknown as PerspectiveViewerElement;
++    // After extending the HTMLElement class above for our interface (PerspectiveViewerElement), we can assign the elem variable normally as shown below:
++    const elem = document.getElementsByTagName('perspective-viewer')[0] as unknown as PerspectiveViewerElement;
++    
++    /**Add attributes to elem**/
++    // Type of graph we want to visualize, using the 'y_line' type.
++    elem.setAttribute('view', 'y_line'); 
++    // Allows us to distinguish stock ABC from DEF
++    elem.setAttribute('column-pivots', '["stock"]');
++    // Sets the label for our x=axis making each datapoint based on the timestamp
++    elem.setAttribute('row-pivots', '["timestamp"]');
++    // Allows us to only focus on the top_ask_price for the y_axis marks, instead of the entire set of features provided by the data
++    elem.setAttribute('columns', '["top_ask_price"]');
++    // Allows us to take duplicated data from earlier observations and consolidate into a single data point. 
++    elem.setAttribute('aggregates', `
++      {"stock":"discount count",
++      "top_ask_price":"avg",
++      "top_bid_price":"avg",
++      "timestamp":"discount count"}`);
+ 
+     const schema = {
+       stock: 'string',
+-- 
+2.14.1.windows.1
+
